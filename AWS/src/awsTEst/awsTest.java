@@ -168,9 +168,6 @@ public class awsTest {
     	String instance_id;
     	System.out.print("Enter instance id : ");
     	instance_id = input_id.nextLine();
-    	
-    	
-        final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
 
         DryRunSupportedRequest<StartInstancesRequest> dry_request =
             () -> {
@@ -247,8 +244,6 @@ public class awsTest {
     
     
     public static void imageList() {
-
-    	//DescribeImagesRequest request = new DescribeImagesRequest()
     	boolean done= false;
     	DescribeImagesRequest request = new DescribeImagesRequest().withOwners("395389474517");
     	DescribeImagesResult response = ec2.describeImages(request);
@@ -256,26 +251,25 @@ public class awsTest {
     				System.out.printf("[ImageID] %s, [Name] %s, [Owner] %s", reservation.getImageId(), reservation.getName(), reservation.getOwnerId());
     				System.out.println();
     			}
-
-
-    			
-    			
-    			
     }
     
     public static void createInstance() {
     	Scanner input = new Scanner(System.in);
     	String image_id;
-
+    	String keypair_name;
     	System.out.print("Enter instance id : ");
     	image_id = input.nextLine();
+    	System.out.print("Enter key pair name : ");
+    	keypair_name = input.nextLine();
+    	
     	 final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
 
          RunInstancesRequest run_request = new RunInstancesRequest()
              .withImageId(image_id)
              .withInstanceType(com.amazonaws.services.ec2.model.InstanceType.T2Micro)
              .withMaxCount(1)
-             .withMinCount(1);
+             .withMinCount(1)
+             .withKeyName(keypair_name);
 
          RunInstancesResult run_response = ec2.runInstances(run_request);
 
@@ -288,8 +282,77 @@ public class awsTest {
              reservation_id, image_id);
      }
     
+    public static void available_zones() {
+        try {
+            DescribeAvailabilityZonesResult availabilityZonesResult = ec2.describeAvailabilityZones();
+            for(int i=0; i<availabilityZonesResult.getAvailabilityZones().size(); i++) {
+            	System.out.print("[Zone name] " + availabilityZonesResult.getAvailabilityZones().get(i).getZoneName() + ", [Zone id] " + availabilityZonesResult.getAvailabilityZones().get(i).getZoneId());
+            	System.out.println();
+            	
+            }
+            DescribeInstancesResult describeInstancesRequest = ec2.describeInstances();
+            List<Reservation> reservations = describeInstancesRequest.getReservations();
+            Set<Instance> instances = new HashSet<Instance>();
+        } catch (AmazonServiceException ase) {
+                System.out.println("Caught Exception: " + ase.getMessage());
+                System.out.println("Reponse Status Code: " + ase.getStatusCode());
+                System.out.println("Error Code: " + ase.getErrorCode());
+                System.out.println("Request ID: " + ase.getRequestId());
+        }
+        
+    }
     
+public static void available_regions() {
+        ArrayList<String> save = new ArrayList<String>();//중복 제거
+        try {
+            DescribeAvailabilityZonesResult availabilityZonesResult = ec2.describeAvailabilityZones();
+            for(int i=0; i<availabilityZonesResult.getAvailabilityZones().size(); i++) {
+            	if(!save.contains(availabilityZonesResult.getAvailabilityZones().get(i).getRegionName())) {
+            		System.out.print("[Available region] " + availabilityZonesResult.getAvailabilityZones().get(i).getRegionName() );
+            		save.add(availabilityZonesResult.getAvailabilityZones().get(i).getRegionName());
+                	System.out.println();
+            	}
+            }
+        } catch (AmazonServiceException ase) {
+                System.out.println("Caught Exception: " + ase.getMessage());
+                System.out.println("Reponse Status Code: " + ase.getStatusCode());
+                System.out.println("Error Code: " + ase.getErrorCode());
+                System.out.println("Request ID: " + ase.getRequestId());
+        }
+        
+    }
     
+	static void createKeypair() {
+		Scanner input = new Scanner(System.in);
+    	String key_name;
+    	System.out.print("Enter keypair id : ");
+    	key_name = input.nextLine();
+    	
+    	CreateKeyPairRequest request = new CreateKeyPairRequest().withKeyName(key_name);
+
+        CreateKeyPairResult response = ec2.createKeyPair(request);
+
+        System.out.printf("Successfully created key pair named %s", key_name);
+	}
+
+	static void keypairList() {
+		DescribeKeyPairsRequest request = new DescribeKeyPairsRequest();
+		DescribeKeyPairsResult response = ec2.describeKeyPairs(request);
+		for(int i=0; i<response.getKeyPairs().size(); i++) {
+			System.out.print("[key pair name] " + response.getKeyPairs().get(i).getKeyName()+'\n');
+		}
+	}
+    
+	static void deleteKeypair() {
+		Scanner input = new Scanner(System.in);
+    	String key_name;
+    	System.out.print("Enter keypair name to delete : ");
+    	key_name = input.nextLine();
+    	
+    	DeleteKeyPairRequest request = new DeleteKeyPairRequest().withKeyName(key_name);
+        DeleteKeyPairResult response = ec2.deleteKeyPair(request);
+        System.out.printf("Successfully deleted key pair named %s", key_name);
+	}
     public static void main(String[] args) throws Exception {
 
         System.out.println("===========================================");
@@ -326,6 +389,8 @@ public class awsTest {
         System.out.println(" 3. start instance 4. available regions ");
         System.out.println(" 5. stop instance 6. create instance ");
         System.out.println(" 7. reboot instance 8. list images ");
+        System.out.println(" 9. create key pair 10. key pair list");
+        System.out.println(" 11. delete key pair ");
         System.out.println(" 99. quit ");
         System.out.println("------------------------------------------------------------");
         System.out.print("Enter an integer: ");
@@ -335,9 +400,15 @@ public class awsTest {
         case 1:
         listInstances();
         break;
+        case 2:
+        	available_zones();
+        	break;
         case 3:
         	startInstance();
         break;
+        case 4:
+        	available_regions();
+        	break;
         case 5:
         	stopInstance();
         	break;
@@ -350,30 +421,18 @@ public class awsTest {
         case 8:
         	imageList();
         	break;
+        case 9:
+        	createKeypair();
+        	break;
+        case 10:
+        	keypairList();
+        	break;
+        case 11:
+        	deleteKeypair();
+        	break;
         }
         }
-        /*
-        try {
-            DescribeAvailabilityZonesResult availabilityZonesResult = ec2.describeAvailabilityZones();
-            System.out.println("You have access to " + availabilityZonesResult.getAvailabilityZones().size() +
-                    " Availability Zones.");
 
-            DescribeInstancesResult describeInstancesRequest = ec2.describeInstances();
-            List<Reservation> reservations = describeInstancesRequest.getReservations();
-            Set<Instance> instances = new HashSet<Instance>();
-
-            for (Reservation reservation : reservations) {
-                instances.addAll(reservation.getInstances());
-            }
-
-            System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
-        } catch (AmazonServiceException ase) {
-                System.out.println("Caught Exception: " + ase.getMessage());
-                System.out.println("Reponse Status Code: " + ase.getStatusCode());
-                System.out.println("Error Code: " + ase.getErrorCode());
-                System.out.println("Request ID: " + ase.getRequestId());
-        }
-        */
 
 
 
