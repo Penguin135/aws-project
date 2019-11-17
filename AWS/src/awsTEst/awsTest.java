@@ -17,18 +17,37 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.Scanner;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.services.acmpca.model.Tag;
+import com.amazonaws.services.applicationdiscovery.model.CreateTagsRequest;
+import com.amazonaws.services.applicationdiscovery.model.CreateTagsResult;
+import com.amazonaws.services.codedeploy.model.InstanceType;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesResult;
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
 import com.amazonaws.services.ec2.model.DescribeInstancesResult;
+import com.amazonaws.services.ec2.model.DryRunResult;
+import com.amazonaws.services.ec2.model.DryRunSupportedRequest;
+import com.amazonaws.services.ec2.model.Image;
 import com.amazonaws.services.ec2.model.Instance;
+import com.amazonaws.services.ec2.model.RebootInstancesRequest;
+import com.amazonaws.services.ec2.model.RebootInstancesResult;
 import com.amazonaws.services.ec2.model.Reservation;
+import com.amazonaws.services.ec2.model.RunInstancesRequest;
+import com.amazonaws.services.ec2.model.RunInstancesResult;
+import com.amazonaws.services.ec2.model.StartInstancesRequest;
+import com.amazonaws.services.ec2.model.StopInstancesRequest;
+import com.amazonaws.services.ec2.model.DescribeImagesRequest;
+import com.amazonaws.services.ec2.model.DescribeImagesResult;
 
-
+import com.amazonaws.services.ec2.model.DescribeImageAttributeRequest;
+import com.amazonaws.services.ec2.model.*;
 /**
  * Welcome to your new AWS Java SDK based project!
  *
@@ -54,7 +73,10 @@ import com.amazonaws.services.ec2.model.Reservation;
  *       http://aws.amazon.com/s3/
  */
 public class awsTest {
-
+	
+	static List<String> id_list = new ArrayList<String>();
+	
+	
     /*
      * Before running the code:
      *      Fill in your AWS access credentials in the provided credentials
@@ -91,6 +113,7 @@ public class awsTest {
         ProfileCredentialsProvider credentialsProvider = new ProfileCredentialsProvider();
         try {
             credentialsProvider.getCredentials();
+            
         } catch (Exception e) {
             throw new AmazonClientException(
                     "Cannot load the credentials from the credential profiles file. " +
@@ -102,7 +125,7 @@ public class awsTest {
             .withCredentials(credentialsProvider)
             .withRegion("ap-northeast-2")
             .build();
-
+       
     }
 
     
@@ -120,17 +143,153 @@ public class awsTest {
     							instance.getInstanceType(),
     							instance.getState().getName(),
     							instance.getMonitoring().getState());
+    					id_list.add(instance.getInstanceId());
     				}
     				System.out.println();
+    				
     			}
     			request.setNextToken(response.getNextToken());
     			if(response.getNextToken() == null) {
     				done = true;
     			}
     	}
+    	return;
     }
     
+    //instance Ω√¿€
+    public static void startInstance()
+    {
+    	System.out.print("id list : ");
+    	for (int i=0; i<id_list.size(); i++){
+    		System.out.format("%s ", id_list.get(i));
+    	}
+    	System.out.println();
+    	Scanner input_id = new Scanner(System.in);
+    	String instance_id;
+    	System.out.print("Enter instance id : ");
+    	instance_id = input_id.nextLine();
+    	
+    	
+        final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
 
+        DryRunSupportedRequest<StartInstancesRequest> dry_request =
+            () -> {
+            StartInstancesRequest request = new StartInstancesRequest()
+                .withInstanceIds(instance_id);
+
+            return request.getDryRunRequest();
+        };
+
+        DryRunResult dry_response = ec2.dryRun(dry_request);
+
+        if(!dry_response.isSuccessful()) {
+            System.out.printf("Failed dry run to start instance %s", instance_id);
+            //throw dry_response.getDryRunResponse();
+        }
+
+        StartInstancesRequest request = new StartInstancesRequest()
+            .withInstanceIds(instance_id);
+
+        ec2.startInstances(request);
+
+        System.out.printf("Successfully started instance %s", instance_id);
+    }
+
+    public static void stopInstance()
+    {
+    	Scanner input_id = new Scanner(System.in);
+    	String instance_id;
+    	System.out.print("Enter instance id : ");
+    	instance_id = input_id.nextLine();
+    	
+        final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
+
+        DryRunSupportedRequest<StopInstancesRequest> dry_request =
+            () -> {
+            StopInstancesRequest request = new StopInstancesRequest()
+                .withInstanceIds(instance_id);
+
+            return request.getDryRunRequest();
+        };
+
+        DryRunResult dry_response = ec2.dryRun(dry_request);
+
+        if(!dry_response.isSuccessful()) {
+            System.out.printf(
+                "Failed dry run to stop instance %s", instance_id);
+            throw dry_response.getDryRunResponse();
+        }
+
+        StopInstancesRequest request = new StopInstancesRequest()
+            .withInstanceIds(instance_id);
+
+        ec2.stopInstances(request);
+
+        System.out.printf("Successfully stop instance %s", instance_id);
+    }
+
+    public static void rebootInstance() {
+    	Scanner input_id = new Scanner(System.in);
+    	String instance_id;
+    	System.out.print("Enter instance id : ");
+    	instance_id = input_id.nextLine();
+    	
+    	 final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
+
+         RebootInstancesRequest request = new RebootInstancesRequest()
+             .withInstanceIds(instance_id);
+
+         RebootInstancesResult response = ec2.rebootInstances(request);
+
+         System.out.printf(
+             "Successfully rebooted instance %s", instance_id);
+    }
+    
+    
+    public static void imageList() {
+
+    	//DescribeImagesRequest request = new DescribeImagesRequest()
+    	boolean done= false;
+    	DescribeImagesRequest request = new DescribeImagesRequest().withOwners("395389474517");
+    	DescribeImagesResult response = ec2.describeImages(request);
+    			for(Image reservation : response.getImages()) {    				
+    				System.out.printf("[ImageID] %s, [Name] %s, [Owner] %s", reservation.getImageId(), reservation.getName(), reservation.getOwnerId());
+    				System.out.println();
+    			}
+
+
+    			
+    			
+    			
+    }
+    
+    public static void createInstance() {
+    	Scanner input = new Scanner(System.in);
+    	String image_id;
+
+    	System.out.print("Enter instance id : ");
+    	image_id = input.nextLine();
+    	 final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
+
+         RunInstancesRequest run_request = new RunInstancesRequest()
+             .withImageId(image_id)
+             .withInstanceType(com.amazonaws.services.ec2.model.InstanceType.T2Micro)
+             .withMaxCount(1)
+             .withMinCount(1);
+
+         RunInstancesResult run_response = ec2.runInstances(run_request);
+
+         String reservation_id = run_response.getReservation().getInstances().get(0).getInstanceId();
+
+
+
+         System.out.printf(
+             "Successfully started EC2 instance %s based on AMI %s",
+             reservation_id, image_id);
+     }
+    
+    
+    
     public static void main(String[] args) throws Exception {
 
         System.out.println("===========================================");
@@ -174,9 +333,23 @@ public class awsTest {
         number=menu.nextInt();
         switch(number) {
         case 1:
-
         listInstances();
         break;
+        case 3:
+        	startInstance();
+        break;
+        case 5:
+        	stopInstance();
+        	break;
+        case 6:
+        	createInstance();
+        	break;
+        case 7:
+        	rebootInstance();
+        	break;
+        case 8:
+        	imageList();
+        	break;
         }
         }
         /*
@@ -206,4 +379,6 @@ public class awsTest {
 
 
     }
+    
+    
 }
