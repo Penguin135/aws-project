@@ -27,27 +27,13 @@ import com.amazonaws.services.acmpca.model.Tag;
 import com.amazonaws.services.applicationdiscovery.model.CreateTagsRequest;
 import com.amazonaws.services.applicationdiscovery.model.CreateTagsResult;
 import com.amazonaws.services.codedeploy.model.InstanceType;
+import com.amazonaws.services.config.model.Owner;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
-import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesResult;
-import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
-import com.amazonaws.services.ec2.model.DescribeInstancesResult;
-import com.amazonaws.services.ec2.model.DryRunResult;
-import com.amazonaws.services.ec2.model.DryRunSupportedRequest;
-import com.amazonaws.services.ec2.model.Image;
-import com.amazonaws.services.ec2.model.Instance;
-import com.amazonaws.services.ec2.model.RebootInstancesRequest;
-import com.amazonaws.services.ec2.model.RebootInstancesResult;
-import com.amazonaws.services.ec2.model.Reservation;
-import com.amazonaws.services.ec2.model.RunInstancesRequest;
-import com.amazonaws.services.ec2.model.RunInstancesResult;
-import com.amazonaws.services.ec2.model.StartInstancesRequest;
-import com.amazonaws.services.ec2.model.StopInstancesRequest;
-import com.amazonaws.services.ec2.model.DescribeImagesRequest;
-import com.amazonaws.services.ec2.model.DescribeImagesResult;
-
-import com.amazonaws.services.ec2.model.DescribeImageAttributeRequest;
 import com.amazonaws.services.ec2.model.*;
+import com.amazonaws.services.identitymanagement.AmazonIdentityManagementClient;
+import com.amazonaws.services.organizations.model.DescribeAccountRequest;
+import com.amazonaws.services.organizations.model.DescribeAccountResult;
 /**
  * Welcome to your new AWS Java SDK based project!
  *
@@ -137,11 +123,13 @@ public class awsTest {
     			DescribeInstancesResult response = ec2.describeInstances(request);
     			for(Reservation reservation : response.getReservations()) {
     				for(Instance instance : reservation.getInstances()) {
-    					System.out.printf("[id] %s, " + "[AMI] %s, " +  "[type] %s, " + "[state] %10s, " +  "[monitoring state] %s",
+    					System.out.printf("[id] %s, " + "[AMI] %s, " +  "[type] %s, " + "[state] %10s, " +  "[key pair name] %10s, " +   "[security group] %15s, " + "[monitoring state] %s",
     							instance.getInstanceId(),
     							instance.getImageId(),
     							instance.getInstanceType(),
     							instance.getState().getName(),
+    							instance.getKeyName(),
+    							instance.getSecurityGroups().get(0).getGroupName(),
     							instance.getMonitoring().getState());
     					id_list.add(instance.getInstanceId());
     				}
@@ -199,7 +187,7 @@ public class awsTest {
     	System.out.print("Enter instance id : ");
     	instance_id = input_id.nextLine();
     	
-        final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
+        //final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
 
         DryRunSupportedRequest<StopInstancesRequest> dry_request =
             () -> {
@@ -244,20 +232,25 @@ public class awsTest {
     
     
     public static void imageList() {
-    	boolean done= false;
-    	DescribeImagesRequest request = new DescribeImagesRequest().withOwners("395389474517");
+    	AmazonIdentityManagementClient iamClient = new AmazonIdentityManagementClient();
+		String accountNumber = iamClient.getUser().getUser().getArn().split(":")[4];
+		//System.out.print(accountNumber);
+    	DescribeImagesRequest request = new DescribeImagesRequest().withOwners(accountNumber);
     	DescribeImagesResult response = ec2.describeImages(request);
-    			for(Image reservation : response.getImages()) {    				
-    				System.out.printf("[ImageID] %s, [Name] %s, [Owner] %s", reservation.getImageId(), reservation.getName(), reservation.getOwnerId());
-    				System.out.println();
-    			}
+    	for(Image reservation : response.getImages()) {    				
+    		System.out.printf("[ImageID] %s, [Name] %s, [Owner] %s", reservation.getImageId(), reservation.getName(), reservation.getOwnerId());
+    		System.out.println();
+    	}
+    			
+
+
     }
     
     public static void createInstance() {
     	Scanner input = new Scanner(System.in);
     	String image_id;
     	String keypair_name;
-    	System.out.print("Enter instance id : ");
+    	System.out.print("Enter image id : ");
     	image_id = input.nextLine();
     	System.out.print("Enter key pair name : ");
     	keypair_name = input.nextLine();
@@ -353,6 +346,7 @@ public static void available_regions() {
         DeleteKeyPairResult response = ec2.deleteKeyPair(request);
         System.out.printf("Successfully deleted key pair named %s", key_name);
 	}
+	
     public static void main(String[] args) throws Exception {
 
         System.out.println("===========================================");
