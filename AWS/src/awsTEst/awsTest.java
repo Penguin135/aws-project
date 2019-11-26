@@ -27,6 +27,8 @@ import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.acmpca.model.Tag;
 import com.amazonaws.services.applicationdiscovery.model.CreateTagsRequest;
 import com.amazonaws.services.applicationdiscovery.model.CreateTagsResult;
+import com.amazonaws.services.appstream.model.DeleteImageRequest;
+import com.amazonaws.services.appstream.model.DeleteImageResult;
 import com.amazonaws.services.codedeploy.model.InstanceType;
 import com.amazonaws.services.config.model.Owner;
 import com.amazonaws.services.ec2.AmazonEC2;
@@ -230,9 +232,10 @@ public class awsTest {
 		DescribeImagesRequest request = new DescribeImagesRequest().withOwners(accountNumber);
 		DescribeImagesResult response = ec2.describeImages(request);
 		for (Image reservation : response.getImages()) {
-			System.out.printf("[ImageID] %s, [Name] %s, [Owner] %s", reservation.getImageId(), reservation.getName(),
-					reservation.getOwnerId());
+			System.out.printf("[ImageID] %s, [State] %s, [Owner] %s, [Name] %s", reservation.getImageId(), 
+					reservation.getState(), reservation.getOwnerId(), reservation.getName());
 			System.out.println();
+			
 		}
 	}
 
@@ -306,7 +309,7 @@ public class awsTest {
 	static void createKeypair() {
 		Scanner input = new Scanner(System.in);
 		String key_name;
-		System.out.print("Enter keypair id : ");
+		System.out.print("Enter keypair name : ");
 		key_name = input.nextLine();
 		CreateKeyPairRequest request = new CreateKeyPairRequest().withKeyName(key_name);
 		CreateKeyPairResult response = ec2.createKeyPair(request);
@@ -384,6 +387,18 @@ public class awsTest {
 	    
 	}
 	
+	static void deleteSecuritygroup(){
+		Scanner input = new Scanner(System.in);
+		System.out.print("enter security group name to be deleted : ");
+		String group_name = input.nextLine();
+		
+		DeleteSecurityGroupRequest delete_request = new DeleteSecurityGroupRequest().withGroupName(group_name);
+		DeleteSecurityGroupResult delete_response = ec2.deleteSecurityGroup(delete_request);
+		System.out.print(delete_response);
+		System.out.printf("Successfully deleted security group named %s", group_name);
+	    
+	}
+	
 	public static void deleteInstance() {
 		Scanner input = new Scanner(System.in);
 		System.out.print("Enter id to be deleted : ");
@@ -391,6 +406,42 @@ public class awsTest {
 		
 		TerminateInstancesRequest terminateRequest = new TerminateInstancesRequest().withInstanceIds(delete_instance_id);
 	    ec2.terminateInstances(terminateRequest);
+	}
+	
+	public static void createImage() {
+		Scanner input = new Scanner(System.in);
+		System.out.print("Enter image name : ");
+		String image_name = input.nextLine();
+
+		
+		System.out.print("Enter source instance id : ");
+		String source_instance_id = input.nextLine();
+		
+		//DeleteSecurityGroupRequest delete_request = new DeleteSecurityGroupRequest().withGroupName(group_name);
+		CreateImageRequest create_request = new CreateImageRequest().withName(image_name).withInstanceId(source_instance_id);
+		//DeleteSecurityGroupResult delete_response = ec2.deleteSecurityGroup(delete_request);
+		CreateImageResult create_response = ec2.createImage(create_request);
+		
+		System.out.printf("Successfully created image named %s", image_name);
+		
+		
+	}
+	
+	public static void deleteImage() {
+		Scanner input = new Scanner(System.in);
+		System.out.print("Enter image id to be deleted : ");
+		String image_id = input.nextLine();
+		
+		//DeleteSecurityGroupRequest delete_request = new DeleteSecurityGroupRequest().withGroupName(group_name);
+		
+		//DeleteSecurityGroupResult delete_response = ec2.deleteSecurityGroup(delete_request);
+		
+		
+		DeregisterImageRequest deregister_request = new DeregisterImageRequest().withImageId(image_id);		
+		DeregisterImageResult deregister_response = ec2.deregisterImage(deregister_request);
+		System.out.printf("Successfully deleted image");
+		
+		
 	}
 	
 	public static void main(String[] args) throws Exception {
@@ -414,13 +465,15 @@ public class awsTest {
 			System.out.println(" Cloud Computing, Computer Science Department ");
 			System.out.println(" at Chungbuk National University ");
 			System.out.println("------------------------------------------------------------");
-			System.out.println(" 1. list instance 2. available zones ");
-			System.out.println(" 3. start instance 4. available regions ");
-			System.out.println(" 5. stop instance 6. create instance ");
-			System.out.println(" 7. reboot instance 8. list images ");
-			System.out.println(" 9. create key pair 10. key pair list");
-			System.out.println(" 11. delete key pair 12. security group list");
-			System.out.println(" 13. create security group");
+			System.out.println(" 1. list instance 		2. available zones ");
+			System.out.println(" 3. start instance 		4. available regions ");
+			System.out.println(" 5. stop instance 		6. create instance ");
+			System.out.println(" 7. reboot instance 		8. list images ");
+			System.out.println(" 9. create key pair 		10. key pair list");
+			System.out.println(" 11. delete key pair 		12. security group list");
+			System.out.println(" 13. create security group	14. delete security group");
+			System.out.println(" 15. delete instance		16. create image");
+			System.out.println(" 17. delete image");
 			System.out.println(" 99. quit ");
 			System.out.println("------------------------------------------------------------");
 			System.out.print("Enter an integer: ");
@@ -467,7 +520,16 @@ public class awsTest {
 				createSecuritygroup();
 				break;
 			case 14:
+				deleteSecuritygroup();
+				break;
+			case 15:
 				deleteInstance();
+				break;
+			case 16:
+				createImage();
+				break;
+			case 17:
+				deleteImage();
 				break;
 			case 99:
 				roop=false;
