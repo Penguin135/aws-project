@@ -172,7 +172,6 @@ public class awsTest {
 		try {
 			// 재시작 요청을 인스턴스 id로 요청
 			RebootInstancesRequest request = new RebootInstancesRequest().withInstanceIds(instance_id);
-
 			// 연결된 ec2에서 인스턴스 재시작
 			RebootInstancesResult response = ec2.rebootInstances(request);
 		} catch (Exception e) {
